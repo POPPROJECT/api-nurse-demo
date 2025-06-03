@@ -51,7 +51,6 @@ import googleOauthConfig from './auth/config/google-oauth.config';
     PrismaService,
     StudentExperiencesService,
     ApproversService,
-    JwtOrSessionStrategy,
   ],
 })
 export class AppModule {}
