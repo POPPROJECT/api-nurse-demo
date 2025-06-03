@@ -81,8 +81,10 @@ async function bootstrap() {
 
   // ตั้งค่า CORS บน NestJS app
   app.enableCors({
-    origin: 'https://nurse-demo.vercel.app',
-    credentials: true,
+    origin: ['https://nurse-demo.vercel.app'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization', // Headers ที่อนุญาต
+    credentials: true, // อนุญาตการส่ง credentials (เช่น cookie)
   });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
