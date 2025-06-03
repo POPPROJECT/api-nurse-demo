@@ -13,7 +13,7 @@ export class RefreshTokenGuard implements CanActivate {
 
     try {
       const payload = this.jwt.verify(token, {
-        secret: process.env.REFRESH_SECRET,
+        secret: process.env.JWT_REFRESH_SECRET,
       });
       req.user = payload; // ✅ inject เข้า req.user
       return true;
