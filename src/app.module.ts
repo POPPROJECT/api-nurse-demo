@@ -17,7 +17,6 @@ import { StudentExperiencesModule } from './auth/student-experiences/student-exp
 import { DashboardModule } from './auth/approvers/dashboard-student/dashboard-student.module';
 import { AdminLogModule } from './auth/admin/admin-log/admin-log.module';
 import { AdminSettingModule } from './auth/admin/admin-setting/admin-setting.module';
-import { JwtOrSessionStrategy } from './auth/strategies/jwt-or-session.strategy';
 import { ConfigModule } from '@nestjs/config';
 import jwtConfig from './auth/config/jwt.config';
 import refreshJwtConfig from './auth/config/refresh-jwt.config';
@@ -27,6 +26,7 @@ import googleOauthConfig from './auth/config/google-oauth.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
       load: [jwtConfig, refreshJwtConfig, googleOauthConfig],
     }),
     AuthModule,

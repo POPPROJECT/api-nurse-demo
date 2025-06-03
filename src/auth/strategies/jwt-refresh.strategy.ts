@@ -14,11 +14,14 @@ export class JwtRefreshStrategy extends PassportStrategy(
     private configService: ConfigService,
     private authService: AuthService,
   ) {
+    const secret = configService.get<string>('refreshJwt.secret');
+    console.log('✅ REFRESH SECRET FROM CONFIG SERVICE:', secret); // <-- ดูค่าจากบรรทัดนี้
+
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => req.cookies?.['refresh_token'],
       ]),
-      secretOrKey: configService.get<string>('refreshJwt.secret'),
+      secretOrKey: secret,
       passReqToCallback: true,
     });
   }

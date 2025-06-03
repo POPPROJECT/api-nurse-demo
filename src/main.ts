@@ -60,7 +60,7 @@ import * as path from 'path';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
 
-async function bootstrap() { 
+async function bootstrap() {
   const server = express();
 
   // ✅ ตั้งค่า Middleware บน Express instance โดยตรง
@@ -81,7 +81,7 @@ async function bootstrap() {
 
   // ตั้งค่า CORS บน NestJS app
   app.enableCors({
-    origin: ['https://nurse-demo.vercel.app'],
+    origin: ['http://localhost:3000/'],
     credentials: true,
   });
 
