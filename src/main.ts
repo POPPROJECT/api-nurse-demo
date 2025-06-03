@@ -59,36 +59,40 @@ import * as express from 'express';
 import * as path from 'path';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
-import * as passport from 'passport';
-//import { AllExceptionsFilter } from './all-exceptions.filter';
 
-async function bootstrap() {
+async function bootstrap() { 
   const server = express();
 
-  // ✅ 1. Initialize passport
-  server.use(passport.initialize()); // 🔥 ต้องมาก่อนทุกอย่าง
+  // ✅ ตั้งค่า Middleware บน Express instance โดยตรง
+  // ลำดับมีความสำคัญมาก!
 
-  // ✅ 2. ใช้ cookie parser และ body parser
+  // 1. Cookie Parser
   server.use(cookieParser());
+
+  // 2. Body Parsers
   server.use(express.json());
   server.use(express.urlencoded({ extended: true }));
 
+  // สร้าง NestJS app ด้วย Express instance ที่ตั้งค่าแล้ว
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+
+  // เปิดใช้งาน static file serving
   server.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-  //app.useGlobalFilters(new AllExceptionsFilter());
-
+  // ตั้งค่า CORS บน NestJS app
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: ['https://nurse-demo.vercel.app'],
     credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   });
 
+  // ตั้งค่า Global Pipes
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+
+  // เริ่มต้นแอปและให้ Express server รับฟัง request
   await app.init();
-  server.listen(8000, () => {
-    Logger.log(`🚀 Server ready at http://localhost:8000`, 'Bootstrap');
+  const port = process.env.PORT || 8000;
+  server.listen(port, () => {
+    Logger.log(`🚀 Server ready at http://localhost:${port}`, 'Bootstrap');
   });
 }
 bootstrap();

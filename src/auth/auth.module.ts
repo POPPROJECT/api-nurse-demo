@@ -7,7 +7,6 @@ import { UsersService } from 'src/auth/users/users.service';
 import { LocalStrategy } from './strategies/local.strategy';
 import jwtConfig from './config/jwt.config';
 import { ConfigModule } from '@nestjs/config';
-import RefreshJwtConfig from './config/่refresh-jwt.config';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import googleOauthConfig from './config/google-oauth.config';
 import { GoogleStrategy } from './strategies/google.strategy';
@@ -17,12 +16,13 @@ import { JwtOrSessionGuard } from './guards/jwt-or-session.guard';
 import { JwtOrSessionStrategy } from './strategies/jwt-or-session.strategy';
 import { AdminLogModule } from './admin/admin-log/admin-log.module';
 import { AdminSettingModule } from './admin/admin-setting/admin-setting.module';
+import refreshJwtConfig from './config/refresh-jwt.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [jwtConfig, RefreshJwtConfig, googleOauthConfig],
+      load: [jwtConfig, refreshJwtConfig, googleOauthConfig],
     }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -37,7 +37,7 @@ import { AdminSettingModule } from './admin/admin-setting/admin-setting.module';
     PassportModule,
     StudentExperiencesModule,
     AdminLogModule,
-    AdminSettingModule
+    AdminSettingModule,
   ],
   controllers: [AuthController],
   providers: [
