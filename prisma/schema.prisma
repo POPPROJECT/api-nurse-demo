@@ -1,0 +1,217 @@
+// คำสั่งนิยม
+// migrate เพื่อสร้าง table Prisma ยังไม่ได้สร้าง table : npx prisma migrate dev --name init
+// npx prisma db push
+// อัปเดตตาม schema ล่าสุด : npx prisma generate
+// เช็คฐานข้อมูล : npx prisma studio
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  name      String
+  password  String? // ✅ optional สำหรับ Google login
+  avatarUrl String?
+  role      Role       @default(STUDENT)
+  provider  Provider   @default(LOCAL) // 👈 enum แยกประเภท login
+  status    UserStatus @default(ENABLE) // status user | enable จะสามารถ login ได้ตามปกติ | disable บัญชีจะถูกปิดใช้งานไม่สามารถ login ได้
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  hashedRefreshToken String?
+
+  studentProfile           StudentProfile?
+  approverProfile          ApproverProfile?
+  adminProfile             AdminProfile?
+  experienceManagerProfile ExperienceManagerProfile?
+  adminLogs                AdminLog[]
+}
+
+enum Role {
+  STUDENT
+  APPROVER_IN
+  APPROVER_OUT
+  ADMIN
+  EXPERIENCE_MANAGER
+}
+
+enum UserStatus {
+  ENABLE
+  DISABLE
+}
+
+enum Provider {
+  LOCAL
+  GOOGLE
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PROFILE
+model StudentProfile {
+  id          Int                 @id @default(autoincrement())
+  userId      Int                 @unique
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId   String?             @unique // ✅ กรอกภายหลังได้
+  experiences StudentExperience[]
+}
+
+model ApproverProfile {
+  id     Int    @id @default(autoincrement())
+  userId Int    @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pin    String
+
+  // จำนวนครั้งที่ใส่ PIN ผิดติดกัน (รีเซ็ตเมื่อสำเร็จหรือพ้นช่วง cool-down)
+  pinFailCount   Int       @default(0)
+  // ถ้าเกินจำนวนครั้งที่กำหนด จะล็อกไม่ให้ลองใหม่จนกว่าจะถึงเวลา
+  pinLockedUntil DateTime?
+}
+
+model AdminProfile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ExperienceManagerProfile {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// STUDENT EXPERIENCE
+model StudentExperience {
+  id           String           @id @default(uuid())
+  bookId       Int // สมุดที่นิสิตกรอก
+  book         ExperienceBook   @relation(fields: [bookId], references: [id])
+  course       String? // ← เก็บชื่อ course
+  subCourse    String? // ← เก็บชื่อ subCourse
+  subject      Int? // ← เก็บค่า ในวิชา
+  alwaycourse  Int? // ← เก็บค่า ตลอดหลักสูตร
+  fieldValues  FieldValue[] // ค่าฟิลด์ที่นิสิตกรอก
+  approverRole Role
+  approverName String
+  status       ExperienceStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  studentId    Int
+  student      StudentProfile   @relation(fields: [studentId], references: [id])
+  isDeleted    Boolean          @default(false)
+
+  @@index([studentId])
+  @@index([bookId])
+}
+
+enum ExperienceStatus {
+  PENDING
+  CONFIRMED
+  CANCEL
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// EXPERIENCE BOOK
+model ExperienceBook {
+  id          Int                 @id @default(autoincrement())
+  title       String // ชื่อสมุด เช่น "Clinical Rotation Log"
+  description String? // คำอธิบายเพิ่มเติม (optional)
+  fields      FieldConfig[] // ความสัมพันธ์ไปยัง config ของฟิลด์
+  experiences StudentExperience[] // ความสัมพันธ์ไปยัง log ของนิสิต
+  courses     Course[] //คอร์ส
+  prefixes    BookPrefix[] // อนุญาตรหัสนิสิตปี
+}
+
+// FIELD STRUCTURE IN BOOK
+model FieldConfig {
+  id          Int            @id @default(autoincrement())
+  bookId      Int // foreign key ไปยัง ExperienceBook
+  book        ExperienceBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  name        String // คีย์ภายใน (unique ต่อเล่ม) เช่น "location"
+  label       String // ป้ายชื่อแสดงใน UI เช่น "หอผู้ป่วย"
+  type        FieldType // ชนิดข้อมูล
+  required    Boolean        @default(false) // ต้องกรอกหรือไม่
+  order       Int // ลำดับการแสดง
+  options     String[] // สำหรับ SELECT เท่านั้น (เช่น ["A","B","C"])
+  fieldValues FieldValue[]
+
+  @@unique([bookId, name])
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  TEXTAREA
+}
+
+// PERMITTED STUDENT ID
+model BookPrefix {
+  id        Int            @id @default(autoincrement())
+  bookId    Int
+  prefix    String // รหัสปีที่อนุญาต เช่น "64" หรือ "623"
+  book      ExperienceBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@index([bookId])
+}
+
+// THE VALUE OF EACH FIELD THAT STUDENTS RECORDED
+model FieldValue {
+  id           Int               @id @default(autoincrement())
+  experienceId String
+  experience   StudentExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  fieldId      Int
+  field        FieldConfig       @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value        String // เก็บเป็น string ทุกชนิด แล้วแปลงตาม type เมื่อแสดงผล
+
+  @@index([experienceId])
+  @@index([fieldId])
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// COURSE
+model Course {
+  id         Int            @id @default(autoincrement())
+  bookId     Int
+  book       ExperienceBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  name       String
+  subCourses SubCourse[]
+
+  @@index([bookId])
+}
+
+model SubCourse {
+  id          Int    @id @default(autoincrement())
+  courseId    Int
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  subject     Int?
+  alwaycourse Int?
+}
+
+model AdminLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String // 'create', 'update', 'delete'
+  entity      String // 'User', 'ExperienceBook'
+  entityId    Int?
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+}
+
+model AdminSetting {
+  id                          Int     @id @default(1)
+  isExperienceCountingEnabled Boolean @default(true)
+}
