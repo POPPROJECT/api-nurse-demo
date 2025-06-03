@@ -90,9 +90,10 @@ async function bootstrap() {
 
   // เริ่มต้นแอปและให้ Express server รับฟัง request
   await app.init();
+
   const port = process.env.PORT || 8000;
-  server.listen(port, () => {
-    Logger.log(`🚀 Server ready at http://localhost:${port}`, 'Bootstrap');
+  await app.listen(port, () => {
+    Logger.log(`🚀 Server is running on port ${port}`, 'Bootstrap');
   });
 }
 bootstrap();
