@@ -11,7 +11,6 @@ import { JwtService } from '@nestjs/jwt';
 import { SignInDto, SignUpStudentDto } from './dto/auth.dto';
 import { UsersService } from 'src/auth/users/users.service';
 import { AuthJwtPayload } from 'types/auth-jwtPayload';
-import RefreshJwtConfig from './config/่refresh-jwt.config';
 import jwtConfig from './config/jwt.config';
 import { ConfigType } from '@nestjs/config';
 import { Response } from 'express';
@@ -19,6 +18,7 @@ import { Role, Provider } from '@prisma/client';
 import { UserStatus } from './enums/user-status.enum';
 import { AdminLogService } from './admin/admin-log/admin-log.service';
 import { User } from '@prisma/client';
+import refreshJwtConfig from './config/refresh-jwt.config';
 
 @Injectable()
 export class AuthService {
@@ -28,8 +28,8 @@ export class AuthService {
     private userService: UsersService,
     @Inject(jwtConfig.KEY)
     private jwtConf: ConfigType<typeof jwtConfig>,
-    @Inject(RefreshJwtConfig.KEY)
-    private refreshTokenConf: ConfigType<typeof RefreshJwtConfig>,
+    @Inject(refreshJwtConfig.KEY)
+    private refreshTokenConf: ConfigType<typeof refreshJwtConfig>,
     private adminLogService: AdminLogService,
   ) {}
 
