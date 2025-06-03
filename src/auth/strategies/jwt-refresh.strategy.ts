@@ -11,19 +11,26 @@ export class JwtRefreshStrategy extends PassportStrategy(
   'jwt-refresh',
 ) {
   constructor(
-    private configService: ConfigService,
+    // private configService: ConfigService, // ไม่ต้องใช้ ConfigService แล้ว
     private authService: AuthService,
   ) {
-    const secret = configService.get<string>('refreshJwt.secret');
-    console.log('✅ REFRESH SECRET FROM CONFIG SERVICE:', secret); // <-- ดูค่าจากบรรทัดนี้
+    // ❌ จากเดิมที่ใช้ configService
+    // secretOrKey: configService.get<string>('refreshJwt.secret'),
 
+    // ✅ ลองอ่านจาก process.env โดยตรง
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => req.cookies?.['refresh_token'],
       ]),
-      secretOrKey: secret,
+      secretOrKey: process.env.JWT_REFRESH_SECRET,
       passReqToCallback: true,
     });
+
+    // ดีบักครั้งสุดท้าย
+    console.log(
+      '✅ SECRET FROM process.env DIRECTLY:',
+      process.env.JWT_REFRESH_SECRET,
+    );
   }
 
   async validate(req: Request, payload: { sub: number }) {
