@@ -46,7 +46,7 @@ export class AuthController {
     // ✅ เซ็ต access_token (ใช้ cookie 'access_token')
     res.cookie('access_token', result.accessToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -55,7 +55,7 @@ export class AuthController {
     // ✅ เซ็ต refresh_token (แยก path เพื่อ refresh เฉพาะตอน POST /refresh-token)
     res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: 'lax',
       path: '/auth/refresh-token',
       maxAge: 7 * 24 * 60 * 60 * 1000,

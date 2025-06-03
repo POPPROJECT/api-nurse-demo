@@ -81,7 +81,7 @@ async function bootstrap() {
 
   // ตั้งค่า CORS บน NestJS app
   app.enableCors({
-    origin: 'https://nurse-demo.vercel.app/',
+    origin: 'https://nurse-demo.vercel.app',
     credentials: true,
   });
 
