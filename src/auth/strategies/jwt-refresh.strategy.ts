@@ -21,7 +21,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => req.cookies?.['refresh_token'],
       ]),
-      secretOrKey: config.secret,
+      secretOrKey: configService.get<string>('JWT_REFRESH_SECRET'), // ✅ ดึงตรงจาก .env
       passReqToCallback: true,
     });
   }
