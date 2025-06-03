@@ -85,10 +85,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // ตั้งค่า Global Pipes
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
-  // เริ่มต้นแอปและให้ Express server รับฟัง request
   await app.init();
 
   const port = process.env.PORT || 8000;
