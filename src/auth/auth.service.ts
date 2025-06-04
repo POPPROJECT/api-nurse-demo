@@ -394,34 +394,46 @@ export class AuthService {
 
   // ✅ แก้ไข Method นี้
   async handleGoogleLoginAndRedirect(
-    req: GoogleRequest,
+    req: Request & { user?: any }, // เพิ่ม ? ให้ user และระบุ type กว้างๆ หรือ type ที่ถูกต้องจาก Guard
     res: Response,
   ): Promise<void> {
     const userFromGoogle = req.user;
 
-    if (!userFromGoogle || !userFromGoogle.id) {
+    if (!userFromGoogle || !userFromGoogle.id || !userFromGoogle.role) {
       console.error(
-        'Google login: User object not found in request after guard.',
+        'Google login (AuthService): User object or essential properties not found in request after guard.',
+        userFromGoogle,
       );
-      res.redirect(`${process.env.FRONTEND_URL}/?error=GoogleAuthFailed`);
+      // Redirect กลับไปหน้า Frontend พร้อม Error ที่ชัดเจน
+      res.redirect(
+        `${process.env.FRONTEND_URL}/?error=GoogleAuthenticationFailed`,
+      );
       return;
     }
 
-    // ✅ แปลง role จาก string เป็น enum Role
-    const role = userFromGoogle.role as Role;
-
+    // 1. สร้าง Access Token และ Refresh Token
+    // ตรวจสอบให้แน่ใจว่า userFromGoogle.role เป็นค่า enum Role ที่ถูกต้อง
+    const roleEnum = userFromGoogle.role as Role;
     const tokens = await this.generateTokens({
       id: userFromGoogle.id,
-      name: userFromGoogle.name,
-      role,
+      name: userFromGoogle.name, // ตรวจสอบว่ามี name ใน userFromGoogle object
+      role: roleEnum,
     });
 
+    // 2. สร้าง URL สำหรับ Redirect กลับไปยัง Frontend API Route
+    // พร้อมแนบ Tokens และ Role ไปกับ Query Parameters
     const frontendCallbackUrl = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
     const redirectUrl = new URL(frontendCallbackUrl);
+
     redirectUrl.searchParams.set('accessToken', tokens.accessToken);
     redirectUrl.searchParams.set('refreshToken', tokens.refreshToken);
-    redirectUrl.searchParams.set('role', role);
+    redirectUrl.searchParams.set('role', roleEnum); // ส่ง Role ที่เป็น enum ไป
 
+    // อาจจะส่งข้อมูล user อื่นๆ กลับไปด้วยถ้าจำเป็น
+    // redirectUrl.searchParams.set('userId', userFromGoogle.id.toString());
+    // redirectUrl.searchParams.set('name', encodeURIComponent(userFromGoogle.name || ''));
+
+    // 3. สั่งให้ Browser Redirect (Backend จะไม่ตั้ง Cookie เอง)
     res.redirect(redirectUrl.toString());
   }
 

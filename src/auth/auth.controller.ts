@@ -117,18 +117,18 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(GoogleAuthGuard) // Guard นี้จะ redirect ไปที่ Google
+  @UseGuards(GoogleAuthGuard)
   @Get('google/login')
   googleLogin() {
-    // โดยปกติ Guard จะ redirect ผู้ใช้ไป Google ก่อนที่จะมาถึงบรรทัดนี้
-    // ดังนั้น return นี้อาจจะไม่ถูกส่งไปให้ client โดยตรง
+    // Guard จะ redirect ผู้ใช้ไป Google โดยอัตโนมัติ
     return { msg: 'Redirecting to Google...' };
   }
 
   @Public()
-  @UseGuards(GoogleAuthGuard)
+  @UseGuards(GoogleAuthGuard) // Guard จะจัดการแลก code และ attach user object เข้า req
   @Get('google/redirect')
   async googleRedirect(@Req() req: Request, @Res() res: Response) {
+    // ✅ เรียกใช้ method ใน service ที่แก้ไขแล้ว
     await this.authService.handleGoogleLoginAndRedirect(req as any, res);
   }
 }
