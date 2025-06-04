@@ -360,11 +360,18 @@ export class AuthService {
           'บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
         );
       }
-      // อัปเดตข้อมูลถ้าจำเป็น เช่น avatarUrl
-      if (profile.avatarUrl && user.avatarUrl !== profile.avatarUrl) {
+
+      // ✅ เงื่อนไขใหม่: อัปเดต avatarUrl จาก Google เฉพาะตอนที่ avatar ยังว่าง
+      const shouldUpdateAvatar = !user.avatarUrl && profile.avatarUrl;
+      const shouldUpdateName = !user.name || user.name === user.email;
+
+      if (shouldUpdateAvatar || shouldUpdateName) {
         user = await this.prisma.user.update({
           where: { email: profile.email },
-          data: { avatarUrl: profile.avatarUrl },
+          data: {
+            avatarUrl: shouldUpdateAvatar ? profile.avatarUrl : undefined,
+            name: shouldUpdateName ? profile.name : undefined,
+          },
         });
       }
     } else {
