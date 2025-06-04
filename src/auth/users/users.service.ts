@@ -239,7 +239,13 @@ export class UsersService {
 
   async adminUpdateUser(
     id: number,
-    data: { name?: string; email?: string; pin?: string; password?: string },
+    data: {
+      name?: string;
+      email?: string;
+      pin?: string;
+      password?: string;
+      studentId?: string;
+    },
     adminId: number,
   ) {
     const user = await this.prisma.user.findUnique({
@@ -270,6 +276,14 @@ export class UsersService {
         where: { userId: id },
         update: { pin: data.pin },
         create: { userId: id, pin: data.pin },
+      });
+    }
+
+    if (data.studentId && user.role === 'STUDENT') {
+      await this.prisma.studentProfile.upsert({
+        where: { userId: id },
+        update: { studentId: data.studentId },
+        create: { userId: id, studentId: data.studentId },
       });
     }
 

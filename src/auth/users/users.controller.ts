@@ -158,7 +158,7 @@ export class UsersController {
   async updateUserByAdmin(
     @Param('id') id: string,
     @Body()
-    body: { name?: string; email?: string; pin?: string; password?: string },
+    body: { name?: string; email?: string; pin?: string; password?: string; studentId?: string },
     @CurrentUser() user: { id: number },
   ) {
     return this.usersService.adminUpdateUser(+id, body, user.id);
