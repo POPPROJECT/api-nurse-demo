@@ -68,6 +68,8 @@ export class AuthController {
         name: result.name,
         role: result.role,
       },
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     };
   }
 
@@ -115,16 +117,18 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(GoogleAuthGuard)
+  @UseGuards(GoogleAuthGuard) // Guard นี้จะ redirect ไปที่ Google
   @Get('google/login')
   googleLogin() {
+    // โดยปกติ Guard จะ redirect ผู้ใช้ไป Google ก่อนที่จะมาถึงบรรทัดนี้
+    // ดังนั้น return นี้อาจจะไม่ถูกส่งไปให้ client โดยตรง
     return { msg: 'Redirecting to Google...' };
   }
 
   @Public()
-  @Get('google/redirect')
   @UseGuards(GoogleAuthGuard)
+  @Get('google/redirect')
   async googleRedirect(@Req() req: Request, @Res() res: Response) {
-    await this.authService.googleLogin(req, res);
+    await this.authService.handleGoogleLoginAndRedirect(req as any, res);
   }
 }

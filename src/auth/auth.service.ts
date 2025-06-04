@@ -20,6 +20,20 @@ import { AdminLogService } from './admin/admin-log/admin-log.service';
 import { User } from '@prisma/client';
 import refreshJwtConfig from './config/refresh-jwt.config';
 
+interface GoogleUser {
+  id: number;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  role: string; // หรือ Role type ของคุณ
+  provider: string; // หรือ Provider type ของคุณ
+  status: string; // หรือ UserStatus type ของคุณ
+}
+
+interface GoogleRequest extends Request {
+  user: GoogleUser;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -319,43 +333,96 @@ export class AuthService {
     );
   }
 
-  // ✅ Google user validator
   async validateGoogleUser(profile: {
     email: string;
     name: string;
     avatarUrl?: string;
   }) {
-    // ป้องกัน email ที่ไม่ได้มาจาก nu.ac.th
     if (!profile.email.endsWith('@nu.ac.th')) {
       throw new UnauthorizedException(
         'เฉพาะอีเมลของ @nu.ac.th เท่านั้นที่สามารถเข้าสู่ระบบได้',
       );
     }
 
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { email: profile.email },
     });
 
-    if (!user) {
+    if (user) {
+      // ถ้ามี user อยู่แล้ว
+      if (user.provider !== Provider.GOOGLE) {
+        throw new UnauthorizedException(
+          'This email is already registered via another method',
+        );
+      }
+      if (user.status === UserStatus.DISABLE) {
+        throw new ForbiddenException(
+          'บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
+        );
+      }
+      // อัปเดตข้อมูลถ้าจำเป็น เช่น avatarUrl
+      if (profile.avatarUrl && user.avatarUrl !== profile.avatarUrl) {
+        user = await this.prisma.user.update({
+          where: { email: profile.email },
+          data: { avatarUrl: profile.avatarUrl, name: profile.name },
+        });
+      }
+    } else {
+      // ถ้ายังไม่มี user ให้สร้างใหม่
+      // หมายเหตุ: การสร้าง user ใหม่ควรมี default role ที่เหมาะสม
+      // หรือมี Logic การกำหนด Role เพิ่มเติม
       throw new UnauthorizedException(
         'บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
       );
+      // หากต้องการให้สร้าง User ใหม่ได้ ให้ uncomment และปรับแก้ส่วนด้านล่าง
+      /*
+      user = await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          name: profile.name,
+          avatarUrl: profile.avatarUrl,
+          provider: Provider.GOOGLE,
+          role: 'STUDENT', // << กำหนด Role เริ่มต้น
+          status: UserStatus.ACTIVE,
+          // อาจจะต้องมี password hash หรือ field อื่นๆ ที่จำเป็น
+        },
+      });
+      */
     }
-
-    if (user && user.provider !== Provider.GOOGLE) {
-      throw new UnauthorizedException(
-        'This email is already registered via another method',
-      );
-    }
-
-    // ตรวจสอบสถานะของผู้ใช้ (กรณีที่ถูก DISABLE)
-    if (user.status === UserStatus.DISABLE) {
-      throw new ForbiddenException(
-        'บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
-      );
-    }
-
     return user;
+  }
+
+  // ✅ แก้ไข Method นี้
+  async handleGoogleLoginAndRedirect(
+    req: GoogleRequest,
+    res: Response,
+  ): Promise<void> {
+    const userFromGoogle = req.user;
+
+    if (!userFromGoogle || !userFromGoogle.id) {
+      console.error(
+        'Google login: User object not found in request after guard.',
+      );
+      res.redirect(`${process.env.FRONTEND_URL}/?error=GoogleAuthFailed`);
+      return;
+    }
+
+    // ✅ แปลง role จาก string เป็น enum Role
+    const role = userFromGoogle.role as Role;
+
+    const tokens = await this.generateTokens({
+      id: userFromGoogle.id,
+      name: userFromGoogle.name,
+      role,
+    });
+
+    const frontendCallbackUrl = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+    const redirectUrl = new URL(frontendCallbackUrl);
+    redirectUrl.searchParams.set('accessToken', tokens.accessToken);
+    redirectUrl.searchParams.set('refreshToken', tokens.refreshToken);
+    redirectUrl.searchParams.set('role', role);
+
+    res.redirect(redirectUrl.toString());
   }
 
   // ✅ Update studentId
