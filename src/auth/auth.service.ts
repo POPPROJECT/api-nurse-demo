@@ -364,30 +364,13 @@ export class AuthService {
       if (profile.avatarUrl && user.avatarUrl !== profile.avatarUrl) {
         user = await this.prisma.user.update({
           where: { email: profile.email },
-          data: { avatarUrl: profile.avatarUrl, name: profile.name },
+          data: { avatarUrl: profile.avatarUrl },
         });
       }
     } else {
-      // ถ้ายังไม่มี user ให้สร้างใหม่
-      // หมายเหตุ: การสร้าง user ใหม่ควรมี default role ที่เหมาะสม
-      // หรือมี Logic การกำหนด Role เพิ่มเติม
       throw new UnauthorizedException(
         'บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
       );
-      // หากต้องการให้สร้าง User ใหม่ได้ ให้ uncomment และปรับแก้ส่วนด้านล่าง
-      /*
-      user = await this.prisma.user.create({
-        data: {
-          email: profile.email,
-          name: profile.name,
-          avatarUrl: profile.avatarUrl,
-          provider: Provider.GOOGLE,
-          role: 'STUDENT', // << กำหนด Role เริ่มต้น
-          status: UserStatus.ACTIVE,
-          // อาจจะต้องมี password hash หรือ field อื่นๆ ที่จำเป็น
-        },
-      });
-      */
     }
     return user;
   }
