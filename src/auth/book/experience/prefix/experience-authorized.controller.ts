@@ -132,13 +132,32 @@ export class ExperienceBookAuthorizedController {
 
     // 2) ดึงสมุด+prefix ทุกเล่ม
     const books = await this.prisma.experienceBook.findMany({
-      include: { prefixes: true },
+      include: {
+        prefixes: true,
+        courses: {
+          include: {
+            subCourses: true,
+          },
+        },
+      },
     });
 
     // 3) กรองตาม prefix ของนิสิต
     return books
       .filter((b) => b.prefixes.some((p) => sid.startsWith(p.prefix)))
-      .map((b) => ({ id: b.id, title: b.title }));
+      .map((b) => ({
+        id: b.id,
+        title: b.title,
+        courses: b.courses.map((c) => ({
+          id: c.id,
+          name: c.name,
+          subCourses: c.subCourses.map((s) => ({
+            id: s.id,
+            name: s.name,
+            alwaycourse: s.alwaycourse,
+          })),
+        })),
+      }));
   }
 
   /**
