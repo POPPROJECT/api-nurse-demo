@@ -442,13 +442,17 @@ export class UsersService {
     };
   }
 
-  async findStudentProfileByStudentId(studentId: string) {
+  async findStudentProfileByStudentId(studentDisplayId: string) {
     const profile = await this.prisma.studentProfile.findUnique({
-      where: { studentId },
+      where: { studentId: studentDisplayId },
       include: { user: true },
     });
-    if (!profile) throw new NotFoundException('Student not found');
+    if (!profile || !profile.user)
+      throw new NotFoundException(
+        `Student profile with display ${studentDisplayId} not found or associated user data missing`,
+      );
     return {
+      id: profile.userId,
       studentId: profile.studentId,
       fullname: profile.user.name,
     };
