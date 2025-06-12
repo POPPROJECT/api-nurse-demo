@@ -1,14 +1,14 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  Patch,
+  Controller,
   Delete,
-  ParseIntPipe,
+  Get,
   HttpCode,
   NotFoundException,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -185,4 +185,21 @@ export class ExperienceBookController {
   copyBook(@Param('id', ParseIntPipe) id: number, @Body() dto: CopyBookDto) {
     return this.svc.copyBook(id, dto);
   }
+
+  // ──────────────────────────────────────────────
+  // dashboard
+  // ──────────────────────────────────────────────
+
+  // dashboard-subject
+  @Get(':id/courses')
+  findCoursesByBook(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.findCoursesByBookId(id);
+  }
+
+  // ▼▼▼ [เพิ่ม] Endpoint ใหม่สำหรับดึงรายชื่อ Subject ▼▼▼
+  @Get(':id/subjects')
+  findSubjectsByBook(@Param('id', ParseIntPipe) id: number) {
+    return this.svc.findSubjectsByBookId(id);
+  }
+  // ▲▲▲ [สิ้นสุดส่วนที่เพิ่ม] ▲▲▲
 }

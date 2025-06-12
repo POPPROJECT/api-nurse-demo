@@ -18,7 +18,7 @@ export class PendingRequestsQueryDto {
 
   @IsOptional()
   @IsString()
-  sortBy?: 'createdAt' | 'course' | 'subCourse' = 'createdAt';
+  sortBy?: 'createdAt' | 'course' | 'studentName' | 'subCourse' = 'createdAt';
 
   @IsOptional()
   @IsString()

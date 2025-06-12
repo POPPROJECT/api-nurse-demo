@@ -94,7 +94,7 @@ model StudentExperience {
   book         ExperienceBook   @relation(fields: [bookId], references: [id])
   course       String? // ← เก็บชื่อ course
   subCourse    String? // ← เก็บชื่อ subCourse
-  subject      Int? // ← เก็บค่า ในวิชา
+  subject      String? // ← เก็บค่า ในวิชา
   alwaycourse  Int? // ← เก็บค่า ตลอดหลักสูตร
   fieldValues  FieldValue[] // ค่าฟิลด์ที่นิสิตกรอก
   approverRole Role
@@ -193,7 +193,7 @@ model SubCourse {
   courseId    Int
   course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   name        String
-  subject     Int?
+  subject     String?
   alwaycourse Int?
 }
 

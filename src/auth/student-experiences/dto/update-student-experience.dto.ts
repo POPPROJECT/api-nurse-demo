@@ -1,8 +1,8 @@
 import {
-  IsString,
-  IsOptional,
-  IsNumber,
   IsArray,
+  IsNumber,
+  IsOptional,
+  IsString,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -28,10 +28,10 @@ export class UpdateStudentExperienceDto {
   @IsString()
   approverName?: string;
 
+  // ▼▼▼ [แก้ไข] จุดสำคัญคือตรงนี้ เปลี่ยนเป็น IsString และ string ▼▼▼
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  subject?: number;
+  @IsString()
+  subject?: string;
 
   @IsOptional()
   @IsNumber()

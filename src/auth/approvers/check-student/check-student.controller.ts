@@ -14,13 +14,33 @@ export class CheckStudentController {
    */
   @Get()
   async list(@Query() query: GetCheckStudentsQueryDto) {
-    const { bookId, page, limit, search, sortBy: sortByRaw, order } = query;
+    // const { bookId, page, limit, search, sortBy: sortByRaw, order } = query;
+    // ▼▼▼ [แก้ไข] รับ progressMode มาจาก query ▼▼▼
+    const {
+      bookId,
+      page,
+      limit,
+      search,
+      sortBy: sortByRaw,
+      order,
+      progressMode,
+    } = query;
 
     const allowed = ['studentId', 'name', 'percent'] as const;
     const sortBy: 'studentId' | 'name' | 'percent' = allowed.includes(sortByRaw)
       ? sortByRaw
       : 'studentId';
 
-    return this.svc.list(bookId, page, limit, search, sortBy, order);
+    // return this.svc.list(bookId, page, limit, search, sortBy, order);
+    // ▼▼▼ [แก้ไข] ส่ง progressMode ไปยัง service ▼▼▼
+    return this.svc.list(
+      bookId,
+      page,
+      limit,
+      search,
+      sortBy,
+      order,
+      progressMode,
+    );
   }
 }

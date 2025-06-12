@@ -1,7 +1,7 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ExperienceStatus } from '@prisma/client';
@@ -25,15 +25,45 @@ export class RequestsService {
     };
     if (search) {
       where.OR = [
-        { course: { contains: search, mode: 'insensitive' } },
-        { subCourse: { contains: search, mode: 'insensitive' } },
+        {
+          course: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          subCourse: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
         {
           student: {
-            user: { name: { contains: search, mode: 'insensitive' } },
+            user: {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        },
+        {
+          student: {
+            studentId: {
+              contains: search,
+              mode: 'insensitive',
+            },
           },
         },
       ];
     }
+
+    // ▼▼▼ ส่วนที่แก้ไข: สร้าง object สำหรับ orderBy แบบไดนามิก ▼▼▼
+    const orderBy =
+      sortBy === 'studentName'
+        ? { student: { user: { name: order } } } // <-- จัดการเรียงตามชื่อ (Nested relation)
+        : { [sortBy]: order }; // <-- การเรียงแบบเดิม
+    // ▲▲▲ สิ้นสุดส่วนที่แก้ไข ▲▲▲
 
     const [total, data] = await this.prisma.$transaction([
       this.prisma.studentExperience.count({ where }),
@@ -47,13 +77,16 @@ export class RequestsService {
           },
           fieldValues: { include: { field: true } },
         },
-        orderBy: { [sortBy]: order },
+        orderBy,
         skip,
         take: limit,
       }),
     ]);
 
-    return { total, data };
+    return {
+      total,
+      data,
+    };
   }
 
   private async validatePin(userId: number, dto: PinDto) {
@@ -92,7 +125,10 @@ export class RequestsService {
 
     await this.prisma.approverProfile.update({
       where: { userId },
-      data: { pinFailCount: 0, pinLockedUntil: null },
+      data: {
+        pinFailCount: 0,
+        pinLockedUntil: null,
+      },
     });
   }
 

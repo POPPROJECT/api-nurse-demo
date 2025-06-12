@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsString, IsNotEmpty, IsInt, Min, IsOptional } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateSubCourseDto {
   courseId: number;
@@ -8,10 +8,10 @@ export class CreateSubCourseDto {
   @IsNotEmpty()
   name!: string;
 
+  // ▼▼▼ [แก้ไข] เปลี่ยนจาก IsInt และ number เป็น IsString และ string ▼▼▼
   @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  subject?: number;
+  @IsString()
+  subject?: string;
 
   @IsOptional()
   @IsInt()

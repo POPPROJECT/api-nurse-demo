@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsEnum, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum SortByColumn {
@@ -32,6 +32,12 @@ export class GetCheckStudentsQueryDto {
   @IsString()
   @IsOptional()
   search = '';
+
+  // ▼▼▼ [เพิ่ม] property ใหม่สำหรับรับโหมดการคำนวณ ▼▼▼
+  @IsString()
+  @IsOptional()
+  progressMode = 'all'; // 'all' หรือ courseId (เป็น string)
+  // ▲▲▲ [สิ้นสุดส่วนที่เพิ่ม] ▲▲▲
 
   /** เปลี่ยนจาก @IsIn มาใช้ @IsEnum เพื่อรองรับชื่อคอลัมน์ได้ครบ */
   @IsEnum(SortByColumn, {

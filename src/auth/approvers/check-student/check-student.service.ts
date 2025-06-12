@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ExperienceStatus } from '@prisma/client';
 
@@ -26,14 +22,31 @@ export class CheckStudentService {
     search: string,
     sortBy: 'studentId' | 'name' | 'percent',
     order: 'asc' | 'desc',
+    // ▼▼▼ [แก้ไข] รับ progressMode เพิ่ม ▼▼▼
+    progressMode: string,
   ): Promise<{ total: number; data: StudentProgress[] }> {
     if (!bookId) throw new BadRequestException('ต้องระบุ bookId');
 
-    // 1) ดึง subCourses
+    // ▼▼▼ [แก้ไข] 1) ตรวจสอบ progressMode และดึง SubCourses ให้ถูกต้อง ▼▼▼
+    const subjectId = parseInt(progressMode, 10);
+    const isSubjectMode = !isNaN(subjectId);
+
     const subs = await this.prisma.subCourse.findMany({
-      where: { course: { bookId } },
-      select: { id: true, name: true, alwaycourse: true },
+      where: {
+        course: { bookId },
+        // ถ้าเป็นโหมดรายวิชา ให้กรองด้วย subject ที่เป็น string (progressMode)
+        ...(isSubjectMode && { subject: progressMode }),
+      },
+      select: { id: true, name: true, alwaycourse: true, subject: true },
     });
+    // ▲▲▲ [สิ้นสุดส่วนที่แก้ไข] ▲▲▲
+
+    // // 1) ดึง subCourses
+    // const subs = await this.prisma.subCourse.findMany({
+    //   where: { course: { bookId } },
+    //   select: { id: true, name: true, alwaycourse: true },
+    // });
+
     if (!subs.length) {
       return {
         total: 0,

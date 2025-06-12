@@ -1,10 +1,10 @@
 import {
-  IsInt,
-  IsString,
   IsArray,
-  ValidateNested,
+  IsInt,
   IsOptional,
+  IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -49,10 +49,8 @@ export class CreateStudentExperienceDto {
   subCourse?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Type(() => Number)
-  subject?: number;
+  @IsString()
+  subject?: string;
 
   @IsOptional()
   @IsInt()

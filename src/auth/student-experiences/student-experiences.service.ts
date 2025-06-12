@@ -1,8 +1,8 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateStudentExperienceDto } from './dto/create-student-experience.dto';
@@ -206,7 +206,7 @@ export class StudentExperiencesService {
     });
   }
 
-  //ยืนยันหน้า recordslist แบบเดี่ยว
+  //ยืนยันหน้า record list แบบเดี่ยว
   async confirmByApprover(
     id: string,
     studentUserId: number,

@@ -361,4 +361,39 @@ export class ExperienceBookService {
       return copy;
     });
   }
+
+  //dashboard-subject
+  async findCoursesByBookId(bookId: number) {
+    return this.prisma.course.findMany({
+      where: { bookId },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  // ▼▼▼ [แก้ไข] เปลี่ยน Return Type ของฟังก์ชันจาก number[] เป็น string[] ▼▼▼
+  async findSubjectsByBookId(bookId: number): Promise<string[]> {
+    const subCoursesWithSubjects = await this.prisma.subCourse.findMany({
+      where: {
+        course: { bookId },
+        subject: { not: null },
+      },
+      select: {
+        subject: true,
+      },
+      distinct: ['subject'],
+      orderBy: {
+        subject: 'asc',
+      },
+    });
+
+    // Logic ส่วนนี้ถูกต้องแล้ว เพราะ s.subject! ตอนนี้เป็น string
+    return subCoursesWithSubjects.map((s) => s.subject!);
+  }
+  // ▲▲▲ [สิ้นสุดส่วนที่เพิ่ม] ▲▲▲
 }
