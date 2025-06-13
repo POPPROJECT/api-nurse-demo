@@ -32,6 +32,8 @@ model User {
   adminProfile             AdminProfile?
   experienceManagerProfile ExperienceManagerProfile?
   adminLogs                AdminLog[]
+
+  @@index([name])
 }
 
 enum Role {
@@ -108,6 +110,7 @@ model StudentExperience {
 
   @@index([studentId])
   @@index([bookId])
+  @@index([approverName])
 }
 
 enum ExperienceStatus {
