@@ -54,7 +54,7 @@ bootstrap();
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
 import * as path from 'path';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -80,19 +80,19 @@ async function bootstrap() {
   server.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
   // ตั้งค่า CORS บน NestJS app
-  // app.enableCors({
-  //   origin: ['https://nurse-demo.vercel.app'],
-  //   credentials: true, // อนุญาตการส่ง credentials (เช่น cookie)
-  //   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  //   allowedHeaders: 'Content-Type, Authorization', // Headers ที่อนุญาต
-  // });
-
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: ['https://nurse-demo.vercel.app'],
     credentials: true, // อนุญาตการส่ง credentials (เช่น cookie)
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: 'Content-Type, Authorization', // Headers ที่อนุญาต
   });
+
+  // app.enableCors({
+  //   origin: ['http://localhost:3000'],
+  //   credentials: true, // อนุญาตการส่ง credentials (เช่น cookie)
+  //   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  //   allowedHeaders: 'Content-Type, Authorization', // Headers ที่อนุญาต
+  // });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
