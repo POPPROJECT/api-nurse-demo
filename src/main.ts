@@ -25,7 +25,7 @@ async function bootstrap() {
   // เปิดใช้งาน static file serving
   server.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-  ตั้งค่า CORS บน NestJS app
+  // ตั้งค่า CORS บน NestJS app
   app.enableCors({
     origin: ['https://nurse-demo.vercel.app'],
     credentials: true, // อนุญาตการส่ง credentials (เช่น cookie)
