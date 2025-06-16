@@ -20,11 +20,6 @@ export class CreateStudentExperienceDto {
   @IsInt()
   bookId: number;
 
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  studentId: number;
-
   @IsString()
   approverRole: string;
 

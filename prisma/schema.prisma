@@ -196,8 +196,10 @@ model SubCourse {
   courseId    Int
   course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   name        String
-  subject     String?
-  alwaycourse Int?
+  subject     String? // สำหรับเก็บ "ชื่อวิชา" ที่กรอกเอง (เช่น AE1)
+  alwaycourse Int?  // สำหรับนับ "ตลอดหลักสูตร"
+  inSubjectCount    Int?    // สำหรับนับ "ในวิชา" (เป็นตัวเลข)
+  isSubjectFreeform Boolean @default(false) // "ธง" บอกว่าเป็นโหมดกรอกข้อความหรือไม่
 }
 
 model AdminLog {

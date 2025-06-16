@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateSubCourseDto {
   courseId: number;
@@ -17,4 +23,13 @@ export class CreateSubCourseDto {
   @IsInt()
   @Type(() => Number)
   alwaycourse?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  inSubjectCount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isSubjectFreeform?: boolean;
 }

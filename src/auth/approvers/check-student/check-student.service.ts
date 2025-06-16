@@ -22,30 +22,17 @@ export class CheckStudentService {
     search: string,
     sortBy: 'studentId' | 'name' | 'percent',
     order: 'asc' | 'desc',
-    // ▼▼▼ [แก้ไข] รับ progressMode เพิ่ม ▼▼▼
     progressMode: string,
   ): Promise<{ total: number; data: StudentProgress[] }> {
     if (!bookId) throw new BadRequestException('ต้องระบุ bookId');
 
-    // ▼▼▼ [แก้ไข] 1) ตรวจสอบ progressMode และดึง SubCourses ให้ถูกต้อง ▼▼▼
-    const subjectId = parseInt(progressMode, 10);
-    const isSubjectMode = !isNaN(subjectId);
-
+    // 1. ดึง SubCourse ทั้งหมดของสมุดเล่มนี้ โดยไม่กรองอะไรเพิ่มเติม
     const subs = await this.prisma.subCourse.findMany({
       where: {
         course: { bookId },
-        // ถ้าเป็นโหมดรายวิชา ให้กรองด้วย subject ที่เป็น string (progressMode)
-        ...(isSubjectMode && { subject: progressMode }),
       },
-      select: { id: true, name: true, alwaycourse: true, subject: true },
+      select: { id: true, name: true, alwaycourse: true, inSubjectCount: true },
     });
-    // ▲▲▲ [สิ้นสุดส่วนที่แก้ไข] ▲▲▲
-
-    // // 1) ดึง subCourses
-    // const subs = await this.prisma.subCourse.findMany({
-    //   where: { course: { bookId } },
-    //   select: { id: true, name: true, alwaycourse: true },
-    // });
 
     if (!subs.length) {
       return {
@@ -54,13 +41,14 @@ export class CheckStudentService {
       };
     }
 
-    // รวม alwaycourse ทั้งหมดเป็น totalPerStudent
-    const totalPerStudent = subs.reduce(
-      (sum, s) => sum + (s.alwaycourse ?? 0),
-      0,
-    );
+    // 2. คำนวณ "ยอดรวมที่ต้องทำ" (totalPerStudent) ตาม progressMode
+    // ถ้าโหมดคือ 'inSubject' ให้รวมจาก 'inSubjectCount', นอกนั้นให้รวมจาก 'alwaycourse'
+    const totalPerStudent =
+      progressMode === 'inSubject'
+        ? subs.reduce((sum, s) => sum + (s.inSubjectCount ?? 0), 0)
+        : subs.reduce((sum, s) => sum + (s.alwaycourse ?? 0), 0);
 
-    // 2) ดึง prefixes
+    // 3. ดึง prefixes
     const prefixes = await this.prisma.bookPrefix.findMany({
       where: { bookId },
       select: { prefix: true },
@@ -69,7 +57,7 @@ export class CheckStudentService {
       studentId: { startsWith: p.prefix, mode: 'insensitive' },
     }));
 
-    // 3) สร้าง where clause (role + prefix + search)
+    // 4. สร้าง where clause (role + prefix + search)
     const filters: any[] = [
       { user: { role: 'STUDENT' } },
       { OR: prefixFilters },
@@ -84,12 +72,11 @@ export class CheckStudentService {
     }
     const whereClause = { AND: filters };
 
-    // 4) นับรวมก่อน pagination
     const totalItems = await this.prisma.studentProfile.count({
       where: whereClause,
     });
 
-    // 5) ถ้า sortBy === 'percent' → ดึงครบ ปราศจาก skip/take/orderBy
+    // 5. ถ้า sortBy === 'percent' → ดึงครบ ปราศจาก skip/take/orderBy
     let profiles;
     if (sortBy === 'percent') {
       profiles = await this.prisma.studentProfile.findMany({
@@ -112,7 +99,7 @@ export class CheckStudentService {
       });
     }
 
-    // 6) คำนวณ done/total/percent สำหรับแต่ละ profile
+    // 6. คำนวณ done/total/percent สำหรับแต่ละ profile
     const list: StudentProgress[] = await Promise.all(
       profiles.map(async (prof) => {
         const exps = await this.prisma.studentExperience.findMany({
@@ -125,19 +112,30 @@ export class CheckStudentService {
           select: { subCourse: true },
         });
 
-        // map subCourse.name → count
-        const m = new Map<string, number>();
+        // สร้าง map เพื่อนับจำนวน log ของแต่ละ subCourse
+        const logCountsBySubCourse = new Map<string, number>();
         exps.forEach((e) => {
           if (!e.subCourse) return;
-          m.set(e.subCourse, (m.get(e.subCourse) ?? 0) + 1);
+          logCountsBySubCourse.set(
+            e.subCourse,
+            (logCountsBySubCourse.get(e.subCourse) ?? 0) + 1,
+          );
         });
 
-        // sum(min(count, requiredCount))
         let doneCount = 0;
+        // วน loop เพื่อคำนวณยอดที่ทำแล้วโดยเทียบกับยอดที่ต้องการของแต่ละ subCourse
         for (const sub of subs) {
-          const c = m.get(sub.name) ?? 0;
-          doneCount += Math.min(c, sub.alwaycourse ?? 0);
+          const count = logCountsBySubCourse.get(sub.name) ?? 0;
+          // เช็คโหมด เพื่อเลือกว่าจะเอา required count จากไหน (inSubjectCount หรือ alwaycourse)
+          const requiredCount =
+            progressMode === 'inSubject'
+              ? (sub.inSubjectCount ?? 0)
+              : (sub.alwaycourse ?? 0);
+
+          // ยอดที่ทำได้ของแต่ละรายการจะถูกจำกัดไม่ให้เกินยอดที่ต้องการ (capping)
+          doneCount += Math.min(count, requiredCount);
         }
+
         const capped = Math.min(doneCount, totalPerStudent);
 
         return {

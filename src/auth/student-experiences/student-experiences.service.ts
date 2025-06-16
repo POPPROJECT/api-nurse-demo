@@ -58,7 +58,7 @@ export class StudentExperiencesService {
         approverName: dto.approverName,
         course: dto.course ?? subCourse.course.name, // fallback หากไม่ได้ส่งมา
         subCourse: dto.subCourse ?? subCourse.name,
-        subject: dto.subject ?? subCourse.subject,
+        subject: dto.subject,
         alwaycourse: dto.alwaycourse ?? subCourse.alwaycourse,
 
         fieldValues: {

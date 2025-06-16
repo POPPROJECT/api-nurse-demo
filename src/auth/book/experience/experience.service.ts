@@ -378,22 +378,23 @@ export class ExperienceBookService {
 
   // ▼▼▼ [แก้ไข] เปลี่ยน Return Type ของฟังก์ชันจาก number[] เป็น string[] ▼▼▼
   async findSubjectsByBookId(bookId: number): Promise<string[]> {
-    const subCoursesWithSubjects = await this.prisma.subCourse.findMany({
-      where: {
-        course: { bookId },
-        subject: { not: null },
-      },
-      select: {
-        subject: true,
-      },
-      distinct: ['subject'],
-      orderBy: {
-        subject: 'asc',
-      },
-    });
+    const experiencesWithSubjects =
+      await this.prisma.studentExperience.findMany({
+        where: {
+          bookId: bookId, // กรองตามสมุดที่เลือก
+          subject: { not: null }, // เอาเฉพาะรายการที่มีการระบุชื่อวิชา
+        },
+        select: {
+          subject: true, // เลือกดูเฉพาะคอลัมน์ subject
+        },
+        distinct: ['subject'], // ดึงมาเฉพาะชื่อวิชาที่ไม่ซ้ำกัน
+        orderBy: {
+          subject: 'asc',
+        },
+      });
 
     // Logic ส่วนนี้ถูกต้องแล้ว เพราะ s.subject! ตอนนี้เป็น string
-    return subCoursesWithSubjects.map((s) => s.subject!);
+    return experiencesWithSubjects.map((exp) => exp.subject!);
   }
   // ▲▲▲ [สิ้นสุดส่วนที่เพิ่ม] ▲▲▲
 }

@@ -17,6 +17,8 @@ export class SubCourseService {
         name: true,
         subject: true,
         alwaycourse: true,
+        inSubjectCount: true,
+        isSubjectFreeform: true,
       },
     });
   }
@@ -35,12 +37,16 @@ export class SubCourseService {
         name: dto.name,
         subject: dto.subject,
         alwaycourse: dto.alwaycourse,
+        inSubjectCount: dto.inSubjectCount,
+        isSubjectFreeform: dto.isSubjectFreeform,
       },
       select: {
         id: true,
         name: true,
         subject: true,
         alwaycourse: true,
+        inSubjectCount: true,
+        isSubjectFreeform: true,
       },
     });
   }
@@ -56,12 +62,16 @@ export class SubCourseService {
         name: dto.name ?? existing.name,
         subject: dto.subject ?? existing.subject,
         alwaycourse: dto.alwaycourse ?? existing.alwaycourse,
+        inSubjectCount: dto.inSubjectCount ?? existing.inSubjectCount,
+        isSubjectFreeform: dto.isSubjectFreeform ?? existing.isSubjectFreeform,
       },
       select: {
         id: true,
         name: true,
         subject: true,
         alwaycourse: true,
+        inSubjectCount: true,
+        isSubjectFreeform: true,
       },
     });
   }

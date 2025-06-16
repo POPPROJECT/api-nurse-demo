@@ -15,7 +15,7 @@ export class BulkConfirmByApproverDto {
   @IsString()
   pin: string;
 
-  // id student
+  // id a student
   @IsString({ each: true })
   ids: string[];
 }
