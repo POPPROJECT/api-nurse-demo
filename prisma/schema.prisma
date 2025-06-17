@@ -99,6 +99,7 @@ model StudentExperience {
   course       Course           @relation(fields: [courseId], references: [id])
   subCourseId  Int
   subCourse    SubCourse        @relation(fields: [subCourseId], references: [id])
+  subject      String?
   approverRole Role
   approverName String
   status       ExperienceStatus @default(PENDING)

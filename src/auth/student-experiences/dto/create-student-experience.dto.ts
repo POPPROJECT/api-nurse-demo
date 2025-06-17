@@ -2,6 +2,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -36,6 +37,9 @@ export class CreateStudentExperienceDto {
   @Type(() => FieldValueDto)
   fieldValues: FieldValueDto[];
 
+  @IsOptional()
+  @IsString()
+  subject?: string; // <-- เพิ่ม property นี้เข้าไป
   // ❌ ฟิลด์ course, subCourse, subject, alwaycourse ถูกลบออก
   // เพราะ service จะดึงข้อมูลเหล่านี้จาก subCourseId ที่ส่งมาโดยอัตโนมัติ
   // และไม่มีการเก็บค่าเหล่านี้โดยตรงในตาราง StudentExperience ตาม schema

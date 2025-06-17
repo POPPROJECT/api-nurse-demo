@@ -319,16 +319,19 @@ export class DashboardService {
     const studentDataProfile = studentProfiles.map((profile) => {
       const studentLogs = studentMap.get(profile.id) ?? new Map();
       let completedCount = 0;
+      let actualCount = 0;
 
       relevantSubCourses.forEach((sc) => {
         const count = studentLogs.get(sc.name) ?? 0;
         completedCount += Math.min(count, sc.required);
+        actualCount += count;
       });
 
       return {
         id: profile.studentId,
         name: profile.user.name,
         completed: completedCount,
+        actual: actualCount,
         total: totalRequired,
         status: completedCount >= totalRequired ? 'completed' : 'incomplete',
       };
