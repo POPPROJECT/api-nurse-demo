@@ -6,7 +6,8 @@ import { UpdateBookDto } from './dto/update-book.dto';
 import { CreateFieldDto } from './dto/create-field.dto';
 import { UpdateFieldDto } from './dto/update-field.dto';
 import { SyncFieldDto } from './dto/sync-fields.dto';
-import { CopyBookDto } from './dto/copy-book.dto'; // ← import ใหม่
+import { CopyBookDto } from './dto/copy-book.dto';
+import { Prisma } from '@prisma/client'; // ← import ใหม่
 
 @Injectable()
 export class ExperienceBookService {
@@ -200,59 +201,64 @@ export class ExperienceBookService {
     const student = await this.prisma.studentProfile.findUnique({
       where: { id: studentId },
     });
-
     if (!student) {
       throw new NotFoundException(`Student ID ${studentId} ไม่พบในระบบ`);
     }
 
-    // 1. ดึงข้อมูล subCourse -> course
     const subCourses = await this.prisma.subCourse.findMany({
       where: { id: { in: progress.map((p) => p.subCourseId) } },
       include: { course: true },
     });
+    const subCoursesMap = new Map(subCourses.map((sc) => [sc.id, sc]));
 
-    // 2. ดึงจำนวน log เดิมของแต่ละ subCourse
     const existingLogs = await this.prisma.studentExperience.groupBy({
-      by: ['subCourse'],
+      by: ['subCourseId'],
       where: {
         bookId,
         studentId,
         status: 'CONFIRMED',
         isDeleted: false,
+        // [แก้ไข] ลบบรรทัดนี้ออก เพราะ subCourseId เป็น field บังคับ ไม่มีทางเป็น null
+        // subCourseId: { not: null },
       },
-      _count: true,
+      _count: {
+        subCourseId: true,
+      },
     });
 
-    const existingMap: Record<string, number> = {};
+    const existingMap: Record<number, number> = {};
     for (const log of existingLogs) {
-      if (log.subCourse) {
-        existingMap[log.subCourse] = log._count;
+      // Logic ส่วนนี้จะกลับมาทำงานได้ถูกต้องเมื่อแก้ where clause แล้ว
+      if (log.subCourseId && log._count) {
+        existingMap[log.subCourseId] = log._count.subCourseId;
       }
     }
 
-    // 3. สร้าง log ใหม่เฉพาะจำนวนที่ยังไม่ถึง
-    const allNewLogs = progress.flatMap(({ subCourseId, count }) => {
-      const sub = subCourses.find((s) => s.id === subCourseId);
-      if (!sub || count <= 0) return [];
+    const allNewLogsData: Prisma.StudentExperienceCreateManyInput[] = [];
+    for (const { subCourseId, count } of progress) {
+      const sub = subCoursesMap.get(subCourseId);
+      if (!sub || count <= 0) continue;
 
-      const existing = existingMap[sub.name] || 0;
+      const existing = existingMap[subCourseId] || 0;
       const remaining = Math.max(0, count - existing);
-      if (remaining <= 0) return [];
+      if (remaining <= 0) continue;
 
-      return Array(remaining).fill({
-        studentId,
-        bookId,
-        course: sub.course.name,
-        subCourse: sub.name,
-        approverRole: 'EXPERIENCE_MANAGER', // mock
-        approverName: 'ผู้จัดการเล่มบันทึก',
-        status: 'CONFIRMED',
-      });
-    });
+      for (let i = 0; i < remaining; i++) {
+        allNewLogsData.push({
+          studentId,
+          bookId,
+          courseId: sub.courseId,
+          subCourseId: sub.id,
+          approverRole: 'EXPERIENCE_MANAGER',
+          approverName: 'ผู้จัดการเล่มบันทึก',
+          status: 'CONFIRMED',
+        });
+      }
+    }
 
-    if (allNewLogs.length > 0) {
+    if (allNewLogsData.length > 0) {
       await this.prisma.studentExperience.createMany({
-        data: allNewLogs,
+        data: allNewLogsData,
       });
     }
 
@@ -260,27 +266,40 @@ export class ExperienceBookService {
   }
 
   async getStudentProgress(bookId: number, studentId: number) {
-    // ✅ ดึงจำนวน log ที่ CONFIRMED แยกตาม subCourse
     const logs = await this.prisma.studentExperience.groupBy({
-      by: ['subCourse'],
+      by: ['subCourseId'],
       where: {
         bookId,
         studentId,
         status: 'CONFIRMED',
         isDeleted: false,
-        subCourse: { not: null },
+        // [แก้ไข] ลบบรรทัดนี้ออก เพราะ subCourseId เป็น field บังคับ ไม่มีทางเป็น null
+        // subCourseId: { not: null },
       },
-      _count: true,
+      _count: {
+        subCourseId: true,
+      },
     });
 
-    // ✅ แปลงเป็น map { subCourseName: count }
+    const subCourseIds = logs
+      .map((l) => l.subCourseId)
+      .filter((id): id is number => id !== null);
+    const subCourses = await this.prisma.subCourse.findMany({
+      where: { id: { in: subCourseIds } },
+      select: { id: true, name: true },
+    });
+    const subCourseMap = new Map(subCourses.map((sc) => [sc.id, sc.name]));
+
     const result: Record<string, number> = {};
     for (const log of logs) {
-      if (log.subCourse) {
-        result[log.subCourse] = log._count;
+      // Logic ส่วนนี้จะกลับมาทำงานได้ถูกต้องเมื่อแก้ where clause แล้ว
+      if (log.subCourseId && log._count) {
+        const subCourseName = subCourseMap.get(log.subCourseId);
+        if (subCourseName) {
+          result[subCourseName] = log._count.subCourseId;
+        }
       }
     }
-
     return result;
   }
 
@@ -378,23 +397,22 @@ export class ExperienceBookService {
 
   // ▼▼▼ [แก้ไข] เปลี่ยน Return Type ของฟังก์ชันจาก number[] เป็น string[] ▼▼▼
   async findSubjectsByBookId(bookId: number): Promise<string[]> {
-    const experiencesWithSubjects =
-      await this.prisma.studentExperience.findMany({
-        where: {
-          bookId: bookId, // กรองตามสมุดที่เลือก
-          subject: { not: null }, // เอาเฉพาะรายการที่มีการระบุชื่อวิชา
+    const subjects = await this.prisma.subCourse.findMany({
+      where: {
+        course: {
+          bookId: bookId,
         },
-        select: {
-          subject: true, // เลือกดูเฉพาะคอลัมน์ subject
-        },
-        distinct: ['subject'], // ดึงมาเฉพาะชื่อวิชาที่ไม่ซ้ำกัน
-        orderBy: {
-          subject: 'asc',
-        },
-      });
+        subject: { not: null },
+      },
+      distinct: ['subject'],
+      select: {
+        subject: true,
+      },
+      orderBy: {
+        subject: 'asc',
+      },
+    });
 
-    // Logic ส่วนนี้ถูกต้องแล้ว เพราะ s.subject! ตอนนี้เป็น string
-    return experiencesWithSubjects.map((exp) => exp.subject!);
+    return subjects.map((s) => s.subject!);
   }
-  // ▲▲▲ [สิ้นสุดส่วนที่เพิ่ม] ▲▲▲
 }

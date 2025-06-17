@@ -1,10 +1,11 @@
+// request.service.ts
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ExperienceStatus } from '@prisma/client';
+import { ExperienceStatus, Prisma } from '@prisma/client'; // [แก้ไข] import Prisma
 import { PendingRequestsQueryDto } from '../dto/pending-requests-query.dto';
 import { PinDto } from '../dto/pin.dto';
 import { BulkPinDto } from '../dto/bulk-pin.dto';
@@ -19,63 +20,68 @@ export class RequestsService {
   async findPendingForApprover(userName: string, q: PendingRequestsQueryDto) {
     const { page, limit, search, sortBy = 'createdAt', order = 'desc' } = q;
     const skip = (page - 1) * limit;
-    const where: any = {
+
+    // [แก้ไข] แก้ไข Where Clause ให้ถูกต้อง
+    const where: Prisma.StudentExperienceWhereInput = {
       status: ExperienceStatus.PENDING,
       approverName: userName,
     };
     if (search) {
       where.OR = [
-        {
-          course: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          subCourse: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
+        { course: { name: { contains: search, mode: 'insensitive' } } }, // <-- แก้ไข
+        { subCourse: { name: { contains: search, mode: 'insensitive' } } }, // <-- แก้ไข
         {
           student: {
-            user: {
-              name: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
+            user: { name: { contains: search, mode: 'insensitive' } },
           },
         },
-        {
-          student: {
-            studentId: {
-              contains: search,
-              mode: 'insensitive',
-            },
-          },
-        },
+        { student: { studentId: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
-    // ▼▼▼ ส่วนที่แก้ไข: สร้าง object สำหรับ orderBy แบบไดนามิก ▼▼▼
-    const orderBy =
-      sortBy === 'studentName'
-        ? { student: { user: { name: order } } } // <-- จัดการเรียงตามชื่อ (Nested relation)
-        : { [sortBy]: order }; // <-- การเรียงแบบเดิม
-    // ▲▲▲ สิ้นสุดส่วนที่แก้ไข ▲▲▲
+    // [แก้ไข] สร้าง object สำหรับ orderBy ให้รองรับทุกเงื่อนไข
+    let orderBy: Prisma.StudentExperienceOrderByWithRelationInput = {
+      [sortBy]: order,
+    };
+    if (sortBy === 'studentName') {
+      orderBy = { student: { user: { name: order } } };
+    } else if (sortBy === 'course') {
+      orderBy = { course: { name: order } };
+    } else if (sortBy === 'subCourse') {
+      orderBy = { subCourse: { name: order } };
+    }
 
     const [total, data] = await this.prisma.$transaction([
       this.prisma.studentExperience.count({ where }),
       this.prisma.studentExperience.findMany({
         where,
+        // [แก้ไข] เพิ่ม include ให้ครบเพื่อให้ Frontend แสดงผลได้
         include: {
           student: {
-            include: {
-              user: true, // ✅ ดึงข้อมูล user มาด้วย
+            select: {
+              studentId: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
-          fieldValues: { include: { field: true } },
+          course: {
+            select: { id: true, name: true },
+          },
+          subCourse: {
+            select: { id: true, name: true },
+          },
+          fieldValues: {
+            include: {
+              field: {
+                select: {
+                  label: true,
+                },
+              },
+            },
+          },
         },
         orderBy,
         skip,
@@ -83,13 +89,11 @@ export class RequestsService {
       }),
     ]);
 
-    return {
-      total,
-      data,
-    };
+    return { total, data };
   }
 
-  private async validatePin(userId: number, dto: PinDto) {
+  private async validatePin(userId: number, dto: PinDto | BulkPinDto) {
+    // แก้ไข type hinting เล็กน้อย
     const approver = await this.prisma.approverProfile.findUnique({
       where: { userId },
     });
@@ -123,13 +127,16 @@ export class RequestsService {
       throw new BadRequestException(msg);
     }
 
-    await this.prisma.approverProfile.update({
-      where: { userId },
-      data: {
-        pinFailCount: 0,
-        pinLockedUntil: null,
-      },
-    });
+    // Reset counter ถ้า PIN ถูกต้อง
+    if (approver.pinFailCount > 0) {
+      await this.prisma.approverProfile.update({
+        where: { userId },
+        data: {
+          pinFailCount: 0,
+          pinLockedUntil: null,
+        },
+      });
+    }
   }
 
   async confirmOne(id: string, userId: number, dto: PinDto) {

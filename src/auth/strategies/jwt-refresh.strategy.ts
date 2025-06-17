@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
-import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
 
 @Injectable()
@@ -25,12 +24,6 @@ export class JwtRefreshStrategy extends PassportStrategy(
       secretOrKey: process.env.JWT_REFRESH_SECRET,
       passReqToCallback: true,
     });
-
-    // ดีบักครั้งสุดท้าย
-    console.log(
-      '✅ SECRET FROM process.env DIRECTLY:',
-      process.env.JWT_REFRESH_SECRET,
-    );
   }
 
   async validate(req: Request, payload: { sub: number }) {

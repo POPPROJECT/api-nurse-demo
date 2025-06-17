@@ -102,7 +102,7 @@ export class CheckStudentService {
     // 6. คำนวณ done/total/percent สำหรับแต่ละ profile
     const list: StudentProgress[] = await Promise.all(
       profiles.map(async (prof) => {
-        const exps = await this.prisma.studentExperience.findMany({
+        const experiences = await this.prisma.studentExperience.findMany({
           where: {
             bookId,
             studentId: prof.id,
@@ -114,12 +114,16 @@ export class CheckStudentService {
 
         // สร้าง map เพื่อนับจำนวน log ของแต่ละ subCourse
         const logCountsBySubCourse = new Map<string, number>();
-        exps.forEach((e) => {
-          if (!e.subCourse) return;
-          logCountsBySubCourse.set(
-            e.subCourse,
-            (logCountsBySubCourse.get(e.subCourse) ?? 0) + 1,
-          );
+        experiences.forEach((e) => {
+          if (e.subCourse) {
+            // ตรวจสอบว่า subCourse ไม่ใช่ null
+            // [แก้ไข] ใช้ e.subCourse.name เป็น key แทน e.subCourse
+            const key = e.subCourse.name;
+            logCountsBySubCourse.set(
+              key,
+              (logCountsBySubCourse.get(key) ?? 0) + 1,
+            );
+          }
         });
 
         let doneCount = 0;

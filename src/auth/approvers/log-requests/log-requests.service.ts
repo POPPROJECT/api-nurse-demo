@@ -1,8 +1,8 @@
 // back/src/approver/log-requests/log-requests.service.ts
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetLogRequestsQueryDto } from './dto/get-log-requests-query.dto';
-import { ExperienceStatus, Role } from '@prisma/client';
+import { ExperienceStatus } from '@prisma/client';
 
 @Injectable()
 export class LogRequestsService {
@@ -32,18 +32,14 @@ export class LogRequestsService {
 
     if (search) {
       where.OR = [
-        {
-          student: {
-            studentId: { contains: search, mode: 'insensitive' },
-          },
-        },
+        { student: { studentId: { contains: search, mode: 'insensitive' } } },
         {
           student: {
             user: { name: { contains: search, mode: 'insensitive' } },
           },
         },
-        { course: { contains: search, mode: 'insensitive' } },
-        { subCourse: { contains: search, mode: 'insensitive' } },
+        { course: { name: { contains: search, mode: 'insensitive' } } }, // แก้ไขให้ค้นหาใน name
+        { subCourse: { name: { contains: search, mode: 'insensitive' } } }, // แก้ไขให้ค้นหาใน name
       ];
     }
 
@@ -60,6 +56,12 @@ export class LogRequestsService {
         include: {
           student: {
             select: { studentId: true, user: { select: { name: true } } },
+          },
+          course: {
+            select: { name: true },
+          },
+          subCourse: {
+            select: { name: true },
           },
         },
         orderBy: { [sortBy]: order },

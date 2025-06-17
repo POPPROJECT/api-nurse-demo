@@ -1,11 +1,11 @@
 import {
   Controller,
   Get,
-  Req,
-  UseGuards,
+  NotFoundException,
   Param,
   ParseIntPipe,
-  NotFoundException,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Request } from 'express';
@@ -100,7 +100,8 @@ export class ExperienceBookAuthorizedController {
           where: {
             bookId,
             studentId: profile.id,
-            subCourse: sub.name,
+            // [แก้ไข] กรองด้วย subCourseId
+            subCourseId: sub.id,
             status: 'CONFIRMED',
           },
         });
@@ -112,7 +113,6 @@ export class ExperienceBookAuthorizedController {
         };
       }),
     );
-
     return stats;
   }
 
@@ -199,7 +199,8 @@ export class ExperienceBookAuthorizedController {
           where: {
             bookId,
             studentId: profile.id,
-            subCourse: sub.name,
+            // [แก้ไข] กรองด้วย subCourseId
+            subCourseId: sub.id,
             status: 'CONFIRMED',
           },
         });
@@ -211,7 +212,6 @@ export class ExperienceBookAuthorizedController {
         };
       }),
     );
-
     return stats;
   }
 }

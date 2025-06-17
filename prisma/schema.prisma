@@ -94,11 +94,11 @@ model StudentExperience {
   id           String           @id @default(uuid())
   bookId       Int // สมุดที่นิสิตกรอก
   book         ExperienceBook   @relation(fields: [bookId], references: [id])
-  course       String? // ← เก็บชื่อ course
-  subCourse    String? // ← เก็บชื่อ subCourse
-  subject      String? // ← เก็บค่า ในวิชา
-  alwaycourse  Int? // ← เก็บค่า ตลอดหลักสูตร
   fieldValues  FieldValue[] // ค่าฟิลด์ที่นิสิตกรอก
+  courseId     Int
+  course       Course           @relation(fields: [courseId], references: [id])
+  subCourseId  Int
+  subCourse    SubCourse        @relation(fields: [subCourseId], references: [id])
   approverRole Role
   approverName String
   status       ExperienceStatus @default(PENDING)
@@ -111,6 +111,8 @@ model StudentExperience {
   @@index([studentId])
   @@index([bookId])
   @@index([approverName])
+  @@index([courseId])
+  @@index([subCourseId])
 }
 
 enum ExperienceStatus {
@@ -188,6 +190,7 @@ model Course {
   name       String
   subCourses SubCourse[]
 
+  studentExperiences StudentExperience[]
   @@index([bookId])
 }
 
@@ -200,6 +203,9 @@ model SubCourse {
   alwaycourse Int?  // สำหรับนับ "ตลอดหลักสูตร"
   inSubjectCount    Int?    // สำหรับนับ "ในวิชา" (เป็นตัวเลข)
   isSubjectFreeform Boolean @default(false) // "ธง" บอกว่าเป็นโหมดกรอกข้อความหรือไม่
+
+  studentExperiences StudentExperience[]
+  @@index([courseId])
 }
 
 model AdminLog {

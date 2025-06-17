@@ -61,6 +61,7 @@ export class DashboardService {
     const studentMap = new Map<number, Map<string, number>>();
     if (studentIds.length === 0) return studentMap;
     studentIds.forEach((id) => studentMap.set(id, new Map()));
+
     const experiences = await this.prisma.studentExperience.findMany({
       where: {
         bookId,
@@ -68,15 +69,26 @@ export class DashboardService {
         status: 'CONFIRMED',
         isDeleted: false,
       },
-      select: { studentId: true, subCourse: true },
+      // [แก้ไข] ใช้ include เพื่อดึงข้อมูล relation และ select เฉพาะชื่อ
+      include: {
+        subCourse: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
+
     for (const exp of experiences) {
-      if (!exp.subCourse) continue;
+      // [แก้ไข] ตรวจสอบว่า subCourse และ subCourse.name มีอยู่จริง
+      if (!exp.subCourse?.name) continue;
+
       const studentSubMap = studentMap.get(exp.studentId);
       if (studentSubMap) {
+        const subCourseName = exp.subCourse.name; // <--- ใช้ชื่อเป็น Key
         studentSubMap.set(
-          exp.subCourse,
-          (studentSubMap.get(exp.subCourse) ?? 0) + 1,
+          subCourseName,
+          (studentSubMap.get(subCourseName) ?? 0) + 1,
         );
       }
     }
@@ -87,7 +99,6 @@ export class DashboardService {
     subCourse: { alwaycourse?: number | null; inSubjectCount?: number | null },
     viewMode: 'OVERALL' | 'BY_SUBJECT',
   ): number {
-    // ✅ Use alwaycourse for 'OVERALL' and inSubjectCount for 'BY_SUBJECT'
     return (
       (viewMode === 'OVERALL'
         ? subCourse.alwaycourse
