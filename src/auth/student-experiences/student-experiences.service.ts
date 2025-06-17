@@ -109,6 +109,7 @@ export class StudentExperiencesService {
       ];
     }
 
+    // 1. ดึงข้อมูล StudentExperience และนับจำนวนทั้งหมด
     const [total, data] = await this.prisma.$transaction([
       this.prisma.studentExperience.count({ where }),
       this.prisma.studentExperience.findMany({
@@ -120,7 +121,38 @@ export class StudentExperiencesService {
       }),
     ]);
 
-    return { total, data };
+    // 2. รวบรวมชื่อ subCourse ที่ไม่ซ้ำกันเพื่อใช้ในการ query
+    const subCourseNames = [
+      ...new Set(data.map((exp) => exp.subCourse).filter(Boolean)),
+    ] as string[];
+
+    // 3. ดึงข้อมูล SubCourse ทั้งหมดที่เกี่ยวข้องในครั้งเดียว
+    const subCourseDetails = await this.prisma.subCourse.findMany({
+      where: {
+        name: { in: subCourseNames },
+        course: { bookId: bookId }, // กรองเฉพาะ subcourse ใน book ที่ถูกต้อง
+      },
+      select: {
+        name: true,
+        subject: true,
+        inSubjectCount: true,
+      },
+    });
+
+    // 4. สร้าง Map เพื่อการค้นหาที่รวดเร็ว (key คือ subCourse.name)
+    const subCourseMap = new Map(subCourseDetails.map((sc) => [sc.name, sc]));
+
+    // 5. ผสานข้อมูล (Hydrate) กลับเข้าไปใน data หลัก
+    const hydratedData = data.map((exp) => {
+      const details = exp.subCourse ? subCourseMap.get(exp.subCourse) : null;
+      return {
+        ...exp,
+        subject: details?.subject ?? null,
+        inSubjectCount: details?.inSubjectCount ?? null,
+      };
+    });
+
+    return { total, data: hydratedData };
   }
 
   /** ✅ 3. ดึงรายการเดี่ยว (เฉพาะเจ้าของ) */
@@ -375,7 +407,7 @@ export class StudentExperiencesService {
     order?: 'asc' | 'desc';
   }) {
     const {
-      studentId: userId, // ✅ เปลี่ยนชื่อชัดเจนว่ามาจาก user
+      studentId: userId,
       bookId,
       page,
       limit,
@@ -414,6 +446,7 @@ export class StudentExperiencesService {
       ];
     }
 
+    // 1. ดึงข้อมูล StudentExperience และนับจำนวนทั้งหมด
     const [total, data] = await this.prisma.$transaction([
       this.prisma.studentExperience.count({ where }),
       this.prisma.studentExperience.findMany({
@@ -425,7 +458,38 @@ export class StudentExperiencesService {
       }),
     ]);
 
-    return { total, data };
+    // 2. รวบรวมชื่อ subCourse
+    const subCourseNames = [
+      ...new Set(data.map((exp) => exp.subCourse).filter(Boolean)),
+    ] as string[];
+
+    // 3. ดึงข้อมูล SubCourse ที่เกี่ยวข้อง
+    const subCourseDetails = await this.prisma.subCourse.findMany({
+      where: {
+        name: { in: subCourseNames },
+        course: { bookId: bookId },
+      },
+      select: {
+        name: true,
+        subject: true,
+        inSubjectCount: true,
+      },
+    });
+
+    // 4. สร้าง Map
+    const subCourseMap = new Map(subCourseDetails.map((sc) => [sc.name, sc]));
+
+    // 5. ผสานข้อมูล
+    const hydratedData = data.map((exp) => {
+      const details = exp.subCourse ? subCourseMap.get(exp.subCourse) : null;
+      return {
+        ...exp,
+        subject: details?.subject ?? null,
+        inSubjectCount: details?.inSubjectCount ?? null,
+      };
+    });
+
+    return { total, data: hydratedData };
   }
 
   async adminDelete(id: string) {
