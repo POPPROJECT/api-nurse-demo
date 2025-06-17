@@ -76,6 +76,80 @@ export class StudentExperiencesService {
     return experience;
   }
 
+  // ✅ [เพิ่มใหม่] Helper Function สำหรับผสานข้อมูล
+  private async hydrateExperiencesWithSubCourseDetails(
+    experiences: any[],
+    bookId: number,
+  ) {
+    // 1. ถ้าไม่มีข้อมูล ก็ไม่ต้องทำอะไร
+    if (experiences.length === 0) {
+      return [];
+    }
+
+    // 2. สร้างเงื่อนไขการค้นหาที่ไม่ซ้ำกันจากชื่อ course และ subcourse
+    const uniqueKeys = Array.from(
+      new Set(
+        experiences.map((e) =>
+          e.course && e.subCourse ? `${e.course}|${e.subCourse}` : null,
+        ),
+      ),
+    ).filter((key): key is string => !!key);
+
+    // ถ้าไม่มีเงื่อนไขที่ถูกต้อง ก็ไม่ต้อง query
+    if (uniqueKeys.length === 0) {
+      return experiences.map((exp) => ({
+        ...exp,
+        subject: null,
+        inSubjectCount: null,
+      }));
+    }
+
+    const uniqueConditions = uniqueKeys.map((key) => {
+      const [courseName, subCourseName] = key.split('|');
+      return {
+        name: subCourseName,
+        course: {
+          name: courseName,
+          bookId: bookId,
+        },
+      };
+    });
+
+    // 3. ดึงข้อมูล SubCourse ทั้งหมดที่เกี่ยวข้องในครั้งเดียว
+    const subCourseDetails = await this.prisma.subCourse.findMany({
+      where: {
+        OR: uniqueConditions,
+      },
+      select: {
+        name: true,
+        subject: true,
+        inSubjectCount: true,
+        course: { select: { name: true } }, // ดึงชื่อ course มาด้วยเพื่อสร้าง key ที่แม่นยำ
+      },
+    });
+
+    // 4. สร้าง Map เพื่อการค้นหาที่รวดเร็ว (key คือ 'courseName|subCourseName')
+    const subCourseMap = new Map<string, (typeof subCourseDetails)[0]>();
+    subCourseDetails.forEach((sc) => {
+      subCourseMap.set(`${sc.course.name}|${sc.name}`, sc);
+    });
+
+    // 5. ผสานข้อมูล (Hydrate) กลับเข้าไปใน data หลัก
+    const hydratedData = experiences.map((exp) => {
+      const mapKey =
+        exp.course && exp.subCourse ? `${exp.course}|${exp.subCourse}` : null;
+      const details = mapKey ? subCourseMap.get(mapKey) : null;
+
+      return {
+        ...exp,
+        subject: details?.subject ?? null,
+        inSubjectCount: details?.inSubjectCount ?? null,
+      };
+    });
+
+    return hydratedData;
+  }
+
   /** ✅ 2. ดึงรายการทั้งหมดของนิสิต */
   async findAllOfStudent(userId: number, q: ListQuery) {
     const student = await this.prisma.studentProfile.findUnique({
@@ -121,36 +195,10 @@ export class StudentExperiencesService {
       }),
     ]);
 
-    // 2. รวบรวมชื่อ subCourse ที่ไม่ซ้ำกันเพื่อใช้ในการ query
-    const subCourseNames = [
-      ...new Set(data.map((exp) => exp.subCourse).filter(Boolean)),
-    ] as string[];
-
-    // 3. ดึงข้อมูล SubCourse ทั้งหมดที่เกี่ยวข้องในครั้งเดียว
-    const subCourseDetails = await this.prisma.subCourse.findMany({
-      where: {
-        name: { in: subCourseNames },
-        course: { bookId: bookId }, // กรองเฉพาะ subcourse ใน book ที่ถูกต้อง
-      },
-      select: {
-        name: true,
-        subject: true,
-        inSubjectCount: true,
-      },
-    });
-
-    // 4. สร้าง Map เพื่อการค้นหาที่รวดเร็ว (key คือ subCourse.name)
-    const subCourseMap = new Map(subCourseDetails.map((sc) => [sc.name, sc]));
-
-    // 5. ผสานข้อมูล (Hydrate) กลับเข้าไปใน data หลัก
-    const hydratedData = data.map((exp) => {
-      const details = exp.subCourse ? subCourseMap.get(exp.subCourse) : null;
-      return {
-        ...exp,
-        subject: details?.subject ?? null,
-        inSubjectCount: details?.inSubjectCount ?? null,
-      };
-    });
+    const hydratedData = await this.hydrateExperiencesWithSubCourseDetails(
+      data,
+      bookId,
+    );
 
     return { total, data: hydratedData };
   }
@@ -458,36 +506,10 @@ export class StudentExperiencesService {
       }),
     ]);
 
-    // 2. รวบรวมชื่อ subCourse
-    const subCourseNames = [
-      ...new Set(data.map((exp) => exp.subCourse).filter(Boolean)),
-    ] as string[];
-
-    // 3. ดึงข้อมูล SubCourse ที่เกี่ยวข้อง
-    const subCourseDetails = await this.prisma.subCourse.findMany({
-      where: {
-        name: { in: subCourseNames },
-        course: { bookId: bookId },
-      },
-      select: {
-        name: true,
-        subject: true,
-        inSubjectCount: true,
-      },
-    });
-
-    // 4. สร้าง Map
-    const subCourseMap = new Map(subCourseDetails.map((sc) => [sc.name, sc]));
-
-    // 5. ผสานข้อมูล
-    const hydratedData = data.map((exp) => {
-      const details = exp.subCourse ? subCourseMap.get(exp.subCourse) : null;
-      return {
-        ...exp,
-        subject: details?.subject ?? null,
-        inSubjectCount: details?.inSubjectCount ?? null,
-      };
-    });
+    const hydratedData = await this.hydrateExperiencesWithSubCourseDetails(
+      data,
+      bookId,
+    );
 
     return { total, data: hydratedData };
   }
