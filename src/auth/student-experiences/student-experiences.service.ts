@@ -1,3 +1,4 @@
+//backend\src\auth\student-experiences\student-experiences.service.ts
 import {
   BadRequestException,
   ForbiddenException,
@@ -88,7 +89,7 @@ export class StudentExperiencesService {
     return experience;
   }
 
-  /** ✅ 2. ดึงรายการทั้งหมดของนิสิต (สำหรับนิสิตดูของตัวเอง) */
+  /** ✅ 2. [แก้ไข] ดึงรายการทั้งหมดของนิสิต พร้อมข้อมูลจาก Course และ SubCourse */
   async findAllOfStudent(userId: number, q: ListQuery) {
     const student = await this.prisma.studentProfile.findUnique({
       where: { userId },
@@ -104,9 +105,13 @@ export class StudentExperiencesService {
       sortBy = 'createdAt',
       order = 'desc',
     } = q;
+
+    // Logic การเรียงข้อมูล
     const orderBy =
       sortBy === 'course' ? { course: { name: order } } : { [sortBy]: order };
     const skip = (page - 1) * limit;
+
+    // Logic การกรองข้อมูล
     const where: Prisma.StudentExperienceWhereInput = {
       bookId,
       studentId: student.id,
@@ -118,25 +123,46 @@ export class StudentExperiencesService {
         { course: { name: { contains: search, mode: 'insensitive' } } },
         { subCourse: { name: { contains: search, mode: 'insensitive' } } },
         { approverName: { contains: search, mode: 'insensitive' } },
-        { subject: { contains: search, mode: 'insensitive' } }, // ค้นหาใน subject โดยตรงได้แล้ว
+        { subject: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    // [แก้ไข] ทำให้ Query ง่ายขึ้นและถูกต้อง
-    const [total, data] = await this.prisma.$transaction([
+    // ดึงข้อมูลจากฐานข้อมูล
+    const [total, rawData] = await this.prisma.$transaction([
       this.prisma.studentExperience.count({ where }),
       this.prisma.studentExperience.findMany({
         where,
         include: {
           fieldValues: { include: { field: true } },
-          course: true,
-          subCourse: true, // ดึงข้อมูล SubCourse มาตามปกติ
+          course: { select: { id: true, name: true } }, // ดึงทั้ง id และ name
+          subCourse: {
+            select: {
+              id: true,
+              name: true,
+              alwaycourse: true,
+              inSubjectCount: true,
+              isSubjectFreeform: true,
+            },
+          },
+          // ▲▲▲ [สิ้นสุดส่วนที่แก้ไข] ▲▲▲
         },
         skip,
         take: limit,
         orderBy,
       }),
     ]);
+
+    // จัดรูปแบบข้อมูลใหม่ให้แบนราบ และตรงตามที่ Frontend ต้องการ
+    const data = rawData.map((exp) => {
+      const { course, subCourse, ...restOfExp } = exp;
+      return {
+        ...restOfExp,
+        course: course, // ส่งไปทั้ง object { id, name }
+        subCourse: subCourse, // ส่งไปทั้ง object
+        // ไม่ต้อง map field อื่นๆ อีกแล้ว เพราะมันอยู่ใน object subCourse
+      };
+    });
+    // ▲▲▲ [สิ้นสุดส่วนที่เพิ่ม] ▲▲▲
 
     // [แก้ไข] ไม่ต้องทำการ map หรือแปลงข้อมูลอีกต่อไป เพราะข้อมูลถูกต้องแล้ว
     return { total, data };
